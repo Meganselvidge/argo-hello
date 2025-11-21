@@ -1,0 +1,9 @@
+# values.yaml i samma katalog som Chart.yaml
+
+vault:
+  # Detta block går till subcharten "vault" (alias vault i Chart.yaml)
+  unsealConfig:
+    kubernetes:
+      # Här talar vi om var hemligheten med unseal/root keys ska ligga
+      secretNamespace: bankvault
+      secretName: bank-vaults
