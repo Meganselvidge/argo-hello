@@ -1,0 +1,20 @@
+apiVersion: v2
+name: bankvault
+description: A Helm chart for installing bankvault
+version: 0.10.5
+appVersion: "v0.10.5"
+dependencies:
+  - name: vault
+    version: "1.21.0"
+    repository: "oci://ghcr.io/bank-vaults/helm-charts"
+    alias: vault
+
+  - name: vault-operator
+    version: "1.23.0"
+    repository: "oci://ghcr.io/bank-vaults/helm-charts"
+    alias: vault-operator
+
+  - name: vault-secrets-webhook
+    version: "1.22.0"
+    repository: "oci://ghcr.io/bank-vaults/helm-charts"
+    alias: vault-secrets-webhook
