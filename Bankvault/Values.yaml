@@ -1,9 +1,51 @@
-# values.yaml i samma katalog som Chart.yaml
+# values.yaml for your umbrella "bankvault" chart
 
 vault:
-  # Detta block går till subcharten "vault" (alias vault i Chart.yaml)
-  unsealConfig:
-    kubernetes:
-      # Här talar vi om var hemligheten med unseal/root keys ska ligga
-      secretNamespace: bankvault
-      secretName: bank-vaults
+  enabled: true
+
+  # Name of the Vault custom resource (and StatefulSet)
+  nameOverride: bankvault
+  fullnameOverride: bankvault
+
+  # This tells bank-vaults where to store unseal keys + root token
+  # IMPORTANT: matches your namespace "bankvault"
+  vaultConfig:
+    # Minimal Vault server config – file storage, listener with TLS offload handled by bank-vaults
+    storage:
+      file:
+        path: /vault/file
+
+    listener:
+      tcp:
+        address: 0.0.0.0:8200
+        tls_disable: true
+
+    disable_mlock: true
+
+  # bank-vaults sidecar configuration (unsealer + configurer)
+  bankVaults:
+    enabled: true
+
+    # Where the unsealer/configurer will read/write the master keys
+    config:
+      # use the same namespace as the chart
+      unsealConfig:
+        kubernetes:
+          secretNamespace: bankvault     # <-- IMPORTANT: was "default" before
+          secretName: bank-vaults
+
+      # simple example Vault policies / auth backends
+      vaultEnvsConfig:
+        VAULT_LOG_LEVEL: info
+
+      # Very basic Vault config via bank-vaults "config" block
+      # (this is separate from vaultConfig above; both end up merged)
+      vaultConfig:
+        api_addr: http://127.0.0.1:8200
+        ui: true
+
+vault-operator:
+  enabled: true
+
+vault-secrets-webhook:
+  enabled: true
