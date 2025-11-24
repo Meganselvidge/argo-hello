@@ -1,51 +1,102 @@
-# values.yaml
+# values.yaml for your wrapper chart
+
+# --- Generic chart options ----------------------------------------------------
+
+replicaCount: 1
+
+tls:
+  # Empty => chart auto-generates TLS cert/key + CA
+  secretName: ""
+  # Optional: where to copy the CA; you can omit this if you don't need it
+  caNamespaces: []
+
+service:
+  name: vault
+  type: ClusterIP
+  port: 8200
+
+# --- Vault config (static config file -> /vault/config/vault.json) -----------
+
 vault:
-  fullnameOverride: bankvault
-  
-  server:
-    enabled: true
-    tls:
-      enabled: true
-      secretName: ""
-      generate: true
-      ca:
-        subject: "/CN=vault-ca"
-    
+  config:
+    # Basic listener with TLS enabled (cert/key come from the generated secret)
     listener:
       tcp:
-        address: "0.0.0.0:8200"
+        address: 0.0.0.0:8200
         tls_disable: false
+        tls_cert_file: /vault/tls/server.crt
+        tls_key_file: /vault/tls/server.key
 
-  bankVaults:
-    enabled: true
-    tls:
-      enabled: true
-      secretName: ""
-    
-    # Unsealer-specific config
-    unsealer:
-      args:
-        - --mode
-        - k8s
-        - --k8s-secret-namespace
-        - bankvault  # Your namespace
-        - --k8s-secret-name
-        - bank-vaults
-      
-      # Unsealer configuration
-      unsealConfig:
-        options:
-          preFlightChecks: true
-        kubernetes:
-          secretNamespace: bankvault
-          secretName: bank-vaults
-    
-    # Configurer config
-    config:
-      vault:
-        address: https://127.0.0.1:8200
-        caCert: /vault/tls/ca.crt
-        tlsSkipVerify: true
+    # Default file storage (you can switch to raft/consul later if you want HA)
+    storage:
+      file:
+        path: /vault/file
+
+    ui: true
+
+  # Bank-Vaults dynamic config (what used to be bankVaults.config)
+  externalConfig:
+    vault:
+      # Bank-Vaults configurer talks to Vault over localhost + TLS
+      address: https://127.0.0.1:8200
+      caCert: /vault/tls/ca.crt
+      tlsSkipVerify: true
+
+    unsealConfig:
+      options:
+        preFlightChecks: true
+      kubernetes:
+        # 🔧 this is where the unseal secret will live
+        secretNamespace: bankvault
+        secretName: bank-vaults
+
+    # Optional metrics from bank-vaults
+    enableMetrics: true
+
+# --- Bank-Vaults unsealer sidecar --------------------------------------------
+
+unsealer:
+  image:
+    repository: ghcr.io/bank-vaults/bank-vaults
+    tag: v1.32.0
+    pullPolicy: IfNotPresent
+
+  # IMPORTANT: override the default, which is "default" namespace
+  args:
+    - --mode
+    - k8s
+    - --k8s-secret-namespace
+    - bankvault          # <-- your namespace, not "default"
+    - --k8s-secret-name
+    - bank-vaults
+
+# --- ServiceAccount / RBAC ----------------------------------------------------
+
+serviceAccount:
+  create: true
+  # This matches the SA shown in the error:
+  # "system:serviceaccount:bankvault:bankvault"
+  name: bankvault
+  annotations: {}
+  createClusterRoleBinding: true
+
+# --- Optional extras (leave mostly default) -----------------------------------
+
+persistence:
+  enabled: false
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+podAnnotations: {}
+labels: {}
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# --- Other dependencies in your umbrella chart --------------------------------
 
 vault-operator:
   enabled: true
