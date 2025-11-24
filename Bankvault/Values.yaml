@@ -1,57 +1,67 @@
+# values.yaml
+
 vault:
   fullnameOverride: bankvault
 
-  # Aktivera Vault server
   server:
     enabled: true
 
-    # Låt charten generera ett self-signed cert & CA
     tls:
       enabled: true
 
-      # Låt charten AUTO-generera TLS material
-      # (den skapar en Secret som både Vault och bank-vaults sidecar använder)
-      secretName: ""              # tomt => charten genererar åt dig
-      generate: true              # *nyckel*: be charten generera cert
+      # Låt charten generera TLS-material (secret med cert + ca)
+      secretName: ""          # tomt => chart genererar åt dig
+      generate: true
 
-      # Var CA:ns subject (matcher "vault-ca" som du såg i felet)
       ca:
         subject: "/CN=vault-ca"
 
-    # Vault server address internt
-    # (bank-vaults unsealer använder VAULT_ADDR=https://127.0.0.1:8200 redan)
     listener:
       tcp:
         address: "0.0.0.0:8200"
         tls_disable: false
 
-  # Aktivera bank-vaults sidecar-mode
+  # --- Bank-Vaults sidecars (unsealer + configurer) ---
   bankVaults:
     enabled: true
 
-    # Se till att unsealer/configurer använder samma TLS secret som servern
-    # (när tls.generate=true och secretName="" sätter charten detta själv,
-    # men vi är explicita här för tydlighet)
     tls:
       enabled: true
-      secretName: ""        # matcha server.tls.secretName (auto-gen)
+      # samma secret som servern använder; när secretName="" använder
+      # chartens defaults (auto-genererad secret)
+      secretName: ""
 
-    # Unseal-konfiguration (minimalt exempel, K8s-mode med secret i bankvault-namespace)
-    # OBS: Anpassa efter hur du vill lagra unseal key / root token (t.ex. Cloud KMS etc.)
+    # Det här blir bank-vaults konfigfilen som mountas in i configurer
     config:
       vault:
         address: https://127.0.0.1:8200
         caCert: /vault/tls/ca.crt
 
+        # 🔧 Viktigt: motsvarar VAULT_SKIP_VERIFY=true för bank-vaults klienten
+        # (namnet kan vara 'tlsSkipVerify' eller 'skipVerify' beroende på version;
+        # börja med tlsSkipVerify – funkar i de flesta exempel).
+        tlsSkipVerify: true
+
       unsealConfig:
         options:
           preFlightChecks: true
         kubernetes:
-          secretNamespace: bankvault       # inte "default" längre
+          # 🔧 Viktigt: lägg unseal-hemligheten i *bankvault* namespace
+          secretNamespace: bankvault
           secretName: bank-vaults
 
-      # Disable-metrics kan du slå av/ på här
+      # om du vill ha metrics kvar
       enableMetrics: true
+
+  # (valfritt extra: explicita args till unsealer – bra om du vill se det tydligt)
+  unsealer:
+    args:
+      - --mode
+      - k8s
+      - --k8s-secret-namespace
+      - bankvault        # inte 'default' längre
+      - --k8s-secret-name
+      - bank-vaults
 
 vault-operator:
   enabled: true
