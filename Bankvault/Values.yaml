@@ -1,70 +1,48 @@
-# values.yaml
+# values.yaml for your *wrapper* chart
 
 vault:
   fullnameOverride: bankvault
 
   server:
     enabled: true
-
     tls:
       enabled: true
-
-      # Låt charten generera TLS-material (secret med cert + ca)
-      secretName: ""          # tomt => chart genererar åt dig
+      secretName: ""
       generate: true
-
       ca:
         subject: "/CN=vault-ca"
-
     listener:
       tcp:
         address: "0.0.0.0:8200"
         tls_disable: false
 
-  # --- Bank-Vaults sidecars (unsealer + configurer) ---
   bankVaults:
     enabled: true
-
     tls:
       enabled: true
-      # samma secret som servern använder; när secretName="" använder
-      # chartens defaults (auto-genererad secret)
       secretName: ""
-
-    # Det här blir bank-vaults konfigfilen som mountas in i configurer
     config:
       vault:
         address: https://127.0.0.1:8200
         caCert: /vault/tls/ca.crt
-
-        # 🔧 Viktigt: motsvarar VAULT_SKIP_VERIFY=true för bank-vaults klienten
-        # (namnet kan vara 'tlsSkipVerify' eller 'skipVerify' beroende på version;
-        # börja med tlsSkipVerify – funkar i de flesta exempel).
         tlsSkipVerify: true
 
       unsealConfig:
         options:
           preFlightChecks: true
         kubernetes:
-          # 🔧 Viktigt: lägg unseal-hemligheten i *bankvault* namespace
+          # we want the secret in *bankvault* namespace
           secretNamespace: bankvault
           secretName: bank-vaults
 
-      # om du vill ha metrics kvar
       enableMetrics: true
 
-  # (valfritt extra: explicita args till unsealer – bra om du vill se det tydligt)
+  # IMPORTANT: this must be a **sibling of server/bankVaults**, under `vault:`
   unsealer:
     args:
       - --mode
       - k8s
       - --k8s-secret-namespace
-      - bankvault        # inte 'default' längre
+      - bankvault          # <--- NOT default
       - --k8s-secret-name
       - bank-vaults
-
-vault-operator:
-  enabled: true
-
-vault-secrets-webhook:
-  enabled: true
