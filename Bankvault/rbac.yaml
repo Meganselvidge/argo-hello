@@ -1,23 +1,18 @@
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: bankvault-secret-access
-  namespace: bankvault
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  name: vault
+  namespace: {{ .Release.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: bankvault-secret-access
-  namespace: bankvault
+  name: vault-auth-delegator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: bankvault-secret-access
+  kind: ClusterRole
+  name: system:auth-delegator
 subjects:
   - kind: ServiceAccount
-    name: bankvault
-    namespace: bankvault
+    name: vault
+    namespace: {{ .Release.Namespace }}
