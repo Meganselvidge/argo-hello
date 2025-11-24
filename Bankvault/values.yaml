@@ -1,0 +1,9 @@
+vault-operator:
+  enabled: true
+  fullnameOverride: vault-operator
+
+vault-secrets-webhook:
+  enabled: true
+  fullnameOverride: vault-secrets-webhook
+  # Usually it discovers Vault via service name; for simple setups this is enough.
+  # You can tune later to match your CR's service if needed.
