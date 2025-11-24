@@ -1,8 +1,7 @@
-# values.yaml for your *wrapper* chart
-
+# values.yaml
 vault:
   fullnameOverride: bankvault
-
+  
   server:
     enabled: true
     tls:
@@ -11,6 +10,7 @@ vault:
       generate: true
       ca:
         subject: "/CN=vault-ca"
+    
     listener:
       tcp:
         address: "0.0.0.0:8200"
@@ -21,28 +21,34 @@ vault:
     tls:
       enabled: true
       secretName: ""
+    
+    # Unsealer-specific config
+    unsealer:
+      args:
+        - --mode
+        - k8s
+        - --k8s-secret-namespace
+        - bankvault  # Your namespace
+        - --k8s-secret-name
+        - bank-vaults
+      
+      # Unsealer configuration
+      unsealConfig:
+        options:
+          preFlightChecks: true
+        kubernetes:
+          secretNamespace: bankvault
+          secretName: bank-vaults
+    
+    # Configurer config
     config:
       vault:
         address: https://127.0.0.1:8200
         caCert: /vault/tls/ca.crt
         tlsSkipVerify: true
 
-      unsealConfig:
-        options:
-          preFlightChecks: true
-        kubernetes:
-          # we want the secret in *bankvault* namespace
-          secretNamespace: bankvault
-          secretName: bank-vaults
+vault-operator:
+  enabled: true
 
-      enableMetrics: true
-
-  # IMPORTANT: this must be a **sibling of server/bankVaults**, under `vault:`
-  unsealer:
-    args:
-      - --mode
-      - k8s
-      - --k8s-secret-namespace
-      - bankvault          # <--- NOT default
-      - --k8s-secret-name
-      - bank-vaults
+vault-secrets-webhook:
+  enabled: true
