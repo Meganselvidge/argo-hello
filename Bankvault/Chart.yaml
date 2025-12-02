@@ -13,3 +13,27 @@ dependencies:
     version: "1.22.0"
     repository: "oci://ghcr.io/bank-vaults/helm-charts"
     alias: vault-secrets-webhook
+
+    externalConfig:
+    policies:
+      - name: admin
+        rules: |
+          path "*" {
+            capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+          }
+
+    auth:
+      - type: kubernetes
+        path: kubernetes
+        config:
+          # Justera till din API-server om du kör annat än standard
+          kubernetes_host: "https://kubernetes.default.svc:443"
+        roles:
+          - name: admin
+            bound_service_account_names:
+              - {{ .Values.vaultAdmin.serviceAccountName }}
+            bound_service_account_namespaces:
+              - {{ .Values.vaultAdmin.namespace | default .Release.Namespace }}
+            policies:
+              - admin
+            ttl: "24h"
