@@ -7,3 +7,5 @@ vault-secrets-webhook:
   fullnameOverride: vault-secrets-webhook
   # Usually it discovers Vault via service name; for simple setups this is enough.
   # You can tune later to match your CR's service if needed.
+vaultAdmin:
+  serviceAccountName: vault-admin-sa
