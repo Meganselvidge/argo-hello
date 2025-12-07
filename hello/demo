@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-sa
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo               # <- selector
+  template:
+    metadata:
+      labels:
+        app: demo             # <- MÅSTE matcha selector
+      annotations:
+        vault.security.banzaicloud.io/mutate: "true"
+        vault.security.banzaicloud.io/vault-addr: "https://vault.default:8200"
+        vault.security.banzaicloud.io/vault-role: "demo"
+        vault.security.banzaicloud.io/vault-path: "kubernetes"
+        # Välj EN av dessa två (börja med skip-verify i dev):
+        vault.security.banzaicloud.io/vault-skip-verify: "true"
+        # vault.security.banzaicloud.io/vault-tls-secret: "vault-ca"
+    spec:
+      serviceAccountName: demo-sa
+      containers:
+      - name: app
+        image: busybox
+        command: ["sh","-c","env | grep AWS_SECRET && sleep 3600"]
+        env:
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "vault:secret/data/demosecret/aws#AWS_SECRET_ACCESS_KEY"
