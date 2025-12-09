@@ -7,21 +7,25 @@ metadata:
     app.kubernetes.io/name: vault
     vault_cr: vault
 spec:
-  size: 1
-  image: hashicorp/vault:1.14.8
+  size: {{ .Values.vault.size | default 3 }}
+  image: {{ .Values.vault.image | default "hashicorp/vault:1.14.1" }}
 
   # ServiceAccount for Vault + bank-vaults configurer/unsealer
   serviceAccount: vault
 
   serviceType: ClusterIP
 
-  # Optional annotations/labels (trimmed for brevity)
-  vaultAnnotations: {}
-  vaultConfigurerAnnotations: {}
-  vaultLabels: {}
-  vaultConfigurerLabels: {}
+  # Annotations and labels
+  vaultAnnotations:
+    type/instance: vault
+  vaultConfigurerAnnotations:
+    type/instance: vaultconfigurer
+  vaultLabels:
+    example.com/log-format: json
+  vaultConfigurerLabels:
+    example.com/log-format: string
 
-  # Raft storage using a PVC, like cr-raft.yaml
+  # Raft storage using a PVC
   volumeClaimTemplates:
     - metadata:
         name: vault-raft
@@ -30,16 +34,17 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 1Gi
+            storage: {{ .Values.vault.storage | default "1Gi" }}
+        volumeMode: Filesystem
   volumeMounts:
     - name: vault-raft
       mountPath: /vault/file
 
-  # Distribute CA to the webhook namespace
+  # Distribute CA to webhook namespaces
   caNamespaces:
     - "vswh"
 
-  # === THIS is where the unseal secret goes ===
+  # Unseal configuration using Kubernetes secrets
   unsealConfig:
     options:
       preFlightChecks: true
@@ -47,11 +52,10 @@ spec:
       secretShares: 5
       secretThreshold: 3
     kubernetes:
-      # 🔧 Use your namespace instead of `default`
       secretNamespace: {{ .Release.Namespace }}
       secretName: bank-vaults
 
-  # Vault server config (same spirit as cr-raft.yaml)
+  # Vault server configuration
   config:
     storage:
       raft:
@@ -67,6 +71,7 @@ spec:
     statsdDisabled: true
     serviceRegistrationEnabled: true
 
+  # Resource limits and requests
   resources:
     vault:
       limits:
@@ -76,7 +81,9 @@ spec:
         memory: "256Mi"
         cpu: "100m"
 
-  # externalConfig: what bank-vaults configurer applies inside Vault
+  veleroEnabled: true
+
+  # External Vault configuration - policies, auth methods, and secrets
   externalConfig:
     policies:
       - name: allow_secrets
@@ -88,7 +95,6 @@ spec:
     auth:
       - type: kubernetes
         roles:
-          # Allow pods in your Vault ns and the webhook ns
           - name: default
             bound_service_account_names:
               - default
@@ -106,14 +112,24 @@ spec:
         options:
           version: 2
 
-    # Some dev/startup demo secrets (optional)
     startupSecrets:
+      - type: kv
+        path: secret/data/accounts/aws
+        data:
+          data:
+            AWS_ACCESS_KEY_ID: {{ .Values.vault.secrets.aws.accessKeyId | default "secretId" }}
+            AWS_SECRET_ACCESS_KEY: {{ .Values.vault.secrets.aws.secretAccessKey | default "s3cr3t" }}
       - type: kv
         path: secret/data/dockerrepo
         data:
           data:
-            DOCKER_REPO_USER: dockerrepouser
-            DOCKER_REPO_PASSWORD: dockerrepopassword
+            DOCKER_REPO_USER: {{ .Values.vault.secrets.dockerrepo.user | default "dockerrepouser" }}
+            DOCKER_REPO_PASSWORD: {{ .Values.vault.secrets.dockerrepo.password | default "dockerrepopassword" }}
+      - type: kv
+        path: secret/data/mysql
+        data:
+          data:
+            MYSQL_ROOT_PASSWORD: {{ .Values.vault.secrets.mysql.password | default "s3cr3t" }}
 
   vaultEnvsConfig:
     - name: VAULT_LOG_LEVEL

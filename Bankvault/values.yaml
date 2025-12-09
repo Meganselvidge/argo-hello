@@ -1,9 +1,37 @@
+# Vault and Bank-Vaults Helm Chart Configuration
+
+# vault-operator sub-chart
 vault-operator:
   enabled: true
   fullnameOverride: vault-operator
 
+# vault-secrets-webhook sub-chart
 vault-secrets-webhook:
   enabled: true
   fullnameOverride: vault-secrets-webhook
-  # Usually it discovers Vault via service name; for simple setups this is enough.
-  # You can tune later to match your CR's service if needed.
+  replicaCount: 2
+  image:
+    repository: ghcr.io/bank-vaults/vault-secrets-webhook
+    tag: v1.22.2
+
+# Vault Custom Resource Configuration
+vault:
+  # Number of Vault replicas
+  size: 3
+  
+  # Vault image version
+  image: hashicorp/vault:1.14.1
+  
+  # Storage configuration
+  storage: 1Gi
+  
+  # Default secrets to seed into Vault
+  secrets:
+    aws:
+      accessKeyId: secretId
+      secretAccessKey: s3cr3t
+    dockerrepo:
+      user: dockerrepouser
+      password: dockerrepopassword
+    mysql:
+      password: s3cr3t
