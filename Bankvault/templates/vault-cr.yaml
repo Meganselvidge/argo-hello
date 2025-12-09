@@ -43,6 +43,8 @@ spec:
   # Distribute CA to webhook namespaces
   caNamespaces:
     - "vswh"
+    - "default"
+    - "demo"
 
   # Unseal configuration using Kubernetes secrets
   unsealConfig:
@@ -102,6 +104,13 @@ spec:
             bound_service_account_namespaces:
               - {{ .Release.Namespace }}
               - "vswh"
+            policies: allow_secrets
+            ttl: 1h
+          - name: demo
+            bound_service_account_names:
+              - demo-sa
+            bound_service_account_namespaces:
+              - default
             policies: allow_secrets
             ttl: 1h
 
