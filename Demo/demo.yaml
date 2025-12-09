@@ -20,7 +20,7 @@ spec:
         app: demo             # <- MÅSTE matcha selector
       annotations:
         vault.security.banzaicloud.io/mutate: "true"
-        vault.security.banzaicloud.io/vault-addr: "https://vault.default:8200"
+        vault.security.banzaicloud.io/vault-addr: "https://vault.zero8vault:8200"
         vault.security.banzaicloud.io/vault-role: "demo"
         vault.security.banzaicloud.io/vault-path: "kubernetes"
         # Välj EN av dessa två (börja med skip-verify i dev):
