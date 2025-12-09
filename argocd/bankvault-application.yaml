@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bankvault
+  namespace: argocd
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/Meganselvidge/argo-hello.git
+    targetRevision: main
+    path: Bankvault
+    helm:
+      releaseName: bankvault
+      values: |
+        vault:
+          size: 3
+          image: hashicorp/vault:1.14.1
+          storage: 1Gi
+          secrets:
+            aws:
+              accessKeyId: secretId
+              secretAccessKey: s3cr3t
+            dockerrepo:
+              user: dockerrepouser
+              password: dockerrepopassword
+            mysql:
+              password: s3cr3t
+        
+        vault-operator:
+          enabled: true
+          fullnameOverride: vault-operator
+        
+        vault-secrets-webhook:
+          enabled: true
+          fullnameOverride: vault-secrets-webhook
+          replicaCount: 2
+          image:
+            repository: ghcr.io/bank-vaults/vault-secrets-webhook
+            tag: v1.22.2
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
